@@ -16,10 +16,22 @@ jobs:
       - name: Install devkitPro
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl
+          sudo apt-get install -y wget gnupg
           
-          # 官方一键安装脚本
-          curl -L https://apt.devkitpro.org/install-devkitpro-pacman | sudo bash
+          # 添加 devkitPro GPG 密钥
+          wget -qO - https://apt.devkitpro.org/devkitpro-pub.gpg | sudo gpg --dearmor -o /usr/share/keyrings/devkitpro-pub.gpg
+          
+          # 添加 apt 源
+          echo "deb [signed-by=/usr/share/keyrings/devkitpro-pub.gpg] https://apt.devkitpro.org/packages stable main" | sudo tee /etc/apt/sources.list.d/devkitpro.list
+          
+          # 安装
+          sudo apt-get update
+          sudo apt-get install -y devkitpro-pacman
+          
+          # 初始化 pacman
+          sudo dkp-pacman-key --init
+          sudo dkp-pacman-key --populate devkitpro
+          sudo dkp-pacman -Syy --noconfirm
           
           # 安装编译工具
           sudo dkp-pacman -S --noconfirm devkitA64 switch-libnx switch-mbedtls
