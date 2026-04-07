@@ -14,42 +14,23 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          fetch-depth: 0
       
-      # 关键：设置环境变量
-      - name: Setup devkitPro environment
+      - name: Setup environment
         run: |
           echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
           echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
           echo "DEVKITPPC=/opt/devkitpro/devkitPPC" >> $GITHUB_ENV
           echo "/opt/devkitpro/tools/bin" >> $GITHUB_PATH
       
-      # 关键：安装所有依赖库
-      - name: Install devkitPro packages
+      - name: Install libnx
         run: |
-          dkp-pacman -Syyu --noconfirm
-          dkp-pacman -S --noconfirm \
-            switch-dev \
-            switch-libnx \
-            switch-mbedtls \
-            switch-libjpeg-turbo \
-            switch-libwebp \
-            switch-zlib \
-            switch-libpng \
-            switch-freetype \
-            switch-libdrm_nouveau \
-            devkitARM \
-            libnx
-      
-      # 验证环境
-      - name: Check environment
-        run: |
-          echo "DEVKITPRO=$DEVKITPRO"
-          ls -la $DEVKITPRO || echo "DEVKITPRO not found"
-          which aarch64-none-elf-gcc || echo "gcc not found"
+          dkp-pacman -S --noconfirm switch-libnx || echo "Using pre-installed libnx"
+        continue-on-error: true
       
       - name: Build
         run: |
+          export DEVKITPRO=/opt/devkitpro
+          export DEVKITARM=/opt/devkitpro/devkitARM
           make -j$(nproc)
       
       - name: Package
