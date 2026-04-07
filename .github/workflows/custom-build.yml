@@ -16,9 +16,12 @@ jobs:
       - name: Install devkitPro
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget
-          wget -q https://github.com/devkitPro/pacman/releases/latest/download/devkitpro-pacman.amd64.deb
-          sudo dpkg -i devkitpro-pacman.amd64.deb || sudo apt-get install -f -y
+          sudo apt-get install -y curl
+          
+          # 官方一键安装脚本
+          curl -L https://apt.devkitpro.org/install-devkitpro-pacman | sudo bash
+          
+          # 安装编译工具
           sudo dkp-pacman -S --noconfirm devkitA64 switch-libnx switch-mbedtls
       
       - name: Build
