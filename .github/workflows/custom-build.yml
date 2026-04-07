@@ -6,8 +6,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: devkitpro/devkita64:latest
     
     steps:
       - name: Checkout
@@ -15,35 +13,22 @@ jobs:
         with:
           submodules: recursive
       
-      - name: Setup environment
+      - name: Install devkitPro
         run: |
-          echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
-          echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
-          echo "PATH=/opt/devkitpro/tools/bin:$PATH" >> $GITHUB_ENV
-      
-      - name: Fix mirror and install libnx
-        run: |
-          # 换清华镜像源
-          echo 'Server = https://mirrors.tuna.tsinghua.edu.cn/devkitpro/packages/$arch/$repo' > /etc/pacman.d/mirrorlist
-          rm -f /var/lib/pacman/sync/*.db
-          dkp-pacman -Syy --noconfirm
-          dkp-pacman -S --noconfirm switch-libnx switch-mbedtls
-      
-      - name: Verify libnx
-        run: |
-          ls -la /opt/devkitpro/libnx/lib/ 2>/dev/null || echo "libnx not found!"
-          dkp-pacman -Q | grep libnx
+          sudo apt-get update
+          sudo apt-get install -y wget
+          wget -q https://github.com/devkitPro/pacman/releases/latest/download/devkitpro-pacman.amd64.deb
+          sudo dpkg -i devkitpro-pacman.amd64.deb || sudo apt-get install -f -y
+          sudo dkp-pacman -S --noconfirm devkitA64 switch-libnx switch-mbedtls
       
       - name: Build
         run: |
           export DEVKITPRO=/opt/devkitpro
           export DEVKITARM=/opt/devkitpro/devkitARM
           export PATH=$DEVKITPRO/tools/bin:$PATH
-          make clean 2>/dev/null || true
           make -j$(nproc)
       
       - name: Upload
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Atmosphere-Build
