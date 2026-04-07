@@ -1,12 +1,7 @@
 name: Custom Atmosphere Build
 
 on:
-  # 手动触发（推荐，想编译时点一下）
   workflow_dispatch:
-  
-  # 或者每次 push 代码时自动触发
-  push:
-    branches: [ master, main ]
 
 jobs:
   build:
@@ -15,44 +10,59 @@ jobs:
       image: devkitpro/devkita64:latest
     
     steps:
-      # 检出代码
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
       
-      # 编译 Atmosphere
-      - name: Build Atmosphere
+      # 关键：设置环境变量
+      - name: Setup devkitPro environment
+        run: |
+          echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
+          echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
+          echo "DEVKITPPC=/opt/devkitpro/devkitPPC" >> $GITHUB_ENV
+          echo "/opt/devkitpro/tools/bin" >> $GITHUB_PATH
+      
+      # 关键：安装所有依赖库
+      - name: Install devkitPro packages
+        run: |
+          dkp-pacman -Syyu --noconfirm
+          dkp-pacman -S --noconfirm \
+            switch-dev \
+            switch-libnx \
+            switch-mbedtls \
+            switch-libjpeg-turbo \
+            switch-libwebp \
+            switch-zlib \
+            switch-libpng \
+            switch-freetype \
+            switch-libdrm_nouveau \
+            devkitARM \
+            libnx
+      
+      # 验证环境
+      - name: Check environment
+        run: |
+          echo "DEVKITPRO=$DEVKITPRO"
+          ls -la $DEVKITPRO || echo "DEVKITPRO not found"
+          which aarch64-none-elf-gcc || echo "gcc not found"
+      
+      - name: Build
         run: |
           make -j$(nproc)
       
-      # 打包编译结果
-      - name: Package build
+      - name: Package
+        if: success()
         run: |
           mkdir -p upload
           cp -r out/* upload/ 2>/dev/null || true
           ls -la upload/
       
-      # 上传编译产物（可在 Actions 页面下载）
       - name: Upload artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Atmosphere-Custom-Build-${{ github.run_number }}
+          name: Atmosphere-Build
           path: upload/
           retention-days: 30
-      
-      # 可选：自动创建 Release（需要设置权限）
-      - name: Create Release
-        if: github.event_name == 'workflow_dispatch'
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: custom-v1.11.1-${{ github.run_number }}
-          name: Custom Build v1.11.1 #${{ github.run_number }}
-          body: |
-            自动编译的 Atmosphere 自定义版本
-            - 基于最新 master 分支
-            - 支持 HOS 22.1.0
-            - 编译时间：${{ github.event.head_commit.timestamp }}
-          files: upload/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
