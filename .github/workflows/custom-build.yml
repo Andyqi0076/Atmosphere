@@ -16,34 +16,37 @@ jobs:
       - name: Install devkitPro
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget gnupg
+          sudo apt-get install -y wget
           
-          # 添加 devkitPro GPG 密钥
-          wget -qO - https://apt.devkitpro.org/devkitpro-pub.gpg | sudo gpg --dearmor -o /usr/share/keyrings/devkitpro-pub.gpg
+          # 直接下载特定版本的 deb 包
+          wget -q "https://github.com/devkitPro/pacman/releases/download/v2.2.2/devkitpro-pacman.amd64.deb" -O devkitpro.deb
           
-          # 添加 apt 源
-          echo "deb [signed-by=/usr/share/keyrings/devkitpro-pub.gpg] https://apt.devkitpro.org/packages stable main" | sudo tee /etc/apt/sources.list.d/devkitpro.list
-          
-          # 安装
-          sudo apt-get update
-          sudo apt-get install -y devkitpro-pacman
+          # 强制安装，忽略依赖
+          sudo dpkg -i --force-depends devkitpro.deb || true
+          sudo apt-get install -f -y
           
           # 初始化 pacman
-          sudo dkp-pacman-key --init
-          sudo dkp-pacman-key --populate devkitpro
-          sudo dkp-pacman -Syy --noconfirm
+          sudo /opt/devkitpro/pacman/bin/dkp-pacman-key --init || true
+          sudo /opt/devkitpro/pacman/bin/dkp-pacman-key --populate devkitpro || true
+          sudo /opt/devkitpro/pacman/bin/dkp-pacman -Syy --noconfirm || true
           
           # 安装编译工具
-          sudo dkp-pacman -S --noconfirm devkitA64 switch-libnx switch-mbedtls
+          sudo /opt/devkitpro/pacman/bin/dkp-pacman -S --noconfirm devkitA64 switch-libnx switch-mbedtls || true
       
-      - name: Build
+      - name: Setup and Build
         run: |
           export DEVKITPRO=/opt/devkitpro
           export DEVKITARM=/opt/devkitpro/devkitARM
           export PATH=$DEVKITPRO/tools/bin:$PATH
+          
+          # 检查是否安装成功
+          which aarch64-none-elf-gcc || echo "GCC not found"
+          ls -la $DEVKITPRO/libnx/lib/ 2>/dev/null || echo "libnx not found"
+          
           make -j$(nproc)
       
       - name: Upload
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Atmosphere-Build
